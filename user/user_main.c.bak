@@ -1,14 +1,3 @@
-/******************************************************************************
- * Copyright 2013-2014 Espressif Systems (Wuxi)
- *
- * FileName: user_main.c
- *
- * Description: entry file of user application
- *
- * Modification history:
- *     2015/1/23, v1.0 create this file.
-*******************************************************************************/
-
 #include "osapi.h"
 #include "user_interface.h"
 #include "user_interface.h"
@@ -25,8 +14,6 @@
 #include "driver/uart.h" 
 
 
-//#define SSID WLAN_19
-//#define PASSWORD 12345678
 
 #define MAXTIMINGS 10000
 #define BREAKTIME 20
@@ -66,12 +53,14 @@ static void ICACHE_FLASH_ATTR at_tcpclient_discon_cb(void *arg) {
 }
 //----------------------------------------------------------------------
 // Function: at_tcpclient_connect_cb
-// Description: Call back for a connected client
+// Description: Call back for a connected client. Here data are sent to
+//              server.
 // Params: None
 // Return: None
 //----------------------------------------------------------------------
 static void ICACHE_FLASH_ATTR at_tcpclient_connect_cb(void *arg)
 {
+  uart0_sendStr("at_tcpclient_connect_cb\r\n");
   struct espconn *pespconn = (struct espconn *)arg;
 
   os_printf("tcp client connect\r\n");
@@ -81,9 +70,12 @@ static void ICACHE_FLASH_ATTR at_tcpclient_connect_cb(void *arg)
   
   espconn_regist_sentcb(pespconn, at_tcpclient_sent_cb);
   espconn_regist_disconcb(pespconn, at_tcpclient_discon_cb);
-  os_sprintf(payload, MACSTR ",%d,%d\n", MAC2STR(hwaddr), (int)(lastTemp*100), (int)(lastHum*100));
-  os_printf(payload);
-  //sent?!
+  //~/bin/proxy curl "http://184.106.153.149/update?api_key=3QPPYHT1AEJO5VX&field1=33"  
+  os_sprintf(payload,"GET /update?api_key=3QPPYHT1AEJO5VX&field1=3300");   //T
+  uart0_sendStr(payload);
+  //os_sprintf(payload, MACSTR ",%d,%d\n", MAC2STR(hwaddr), (int)(lastTemp*100), (int)(lastHum*100));
+  //os_printf(payload);
+  //send payload to the SERVER
   espconn_sent(pespconn, payload, strlen(payload));
 }
 //----------------------------------------------------------------------
@@ -94,6 +86,7 @@ static void ICACHE_FLASH_ATTR at_tcpclient_connect_cb(void *arg)
 //----------------------------------------------------------------------
 static void ICACHE_FLASH_ATTR sendReading(float t, float h)
 {
+    uart0_sendStr("sendReading\r\n");
     struct espconn *pCon = (struct espconn *)os_zalloc(sizeof(struct espconn));
     if (pCon == NULL)
     {
@@ -102,20 +95,29 @@ static void ICACHE_FLASH_ATTR sendReading(float t, float h)
     }
     pCon->type = ESPCONN_TCP;
     pCon->state = ESPCONN_NONE;
-
-    uint32_t ip = ipaddr_addr("192.168.1.200");
-
+    
     pCon->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
     pCon->proto.tcp->local_port = espconn_port();
-    pCon->proto.tcp->remote_port = 1337;
+    //set up the server remote port
+    pCon->proto.tcp->remote_port = 80;
 
-    //gad vide hvorfor denne ikke bare sættes ligesom alt det andet?
+    //set up the remote IP
+    uint32_t ip = ipaddr_addr("184.106.153.149"); //IP address for thingspeak.com
     os_memcpy(pCon->proto.tcp->remote_ip, &ip, 4);
+    
+    //set up the local IP
+    struct ip_info ipconfig;
+    wifi_get_ip_info(STATION_IF, &ipconfig);
+    os_memcpy(pCon->proto.tcp->local_ip, &ipconfig.ip, 4);
 
-    //u need some functions
+    //register at_tcpclient_connect_cb that will be called when the
+    //connection with the thingspeak is done. In this call back function
+    // will actualy do the data sending
     espconn_regist_connectcb(pCon, at_tcpclient_connect_cb);
-    //kan den undværes?
+    
     //espconn_regist_reconcb(pCon, at_tcpclient_recon_cb);
+
+    //connect to the previous pCon created structure
     espconn_connect(pCon);
 
     os_printf("Temp =  %d *C, Hum = %d \%\n", (int)(t*100), (int)(h*100));
@@ -133,6 +135,13 @@ static void ICACHE_FLASH_ATTR sendReading(float t, float h)
 //----------------------------------------------------------------------
 static void ICACHE_FLASH_ATTR readDHT(void *arg)
 {
+    uart0_sendStr("readDTH\r\n");
+    
+    //for now just send same random data. Not quite random but to test the
+    //TCP client part
+    sendReading((float)1, (float)2);
+    return; //---> just for now
+    
     int counter = 0;
     int laststate = 1;
     int i = 0;
@@ -226,9 +235,10 @@ static void ICACHE_FLASH_ATTR readDHT(void *arg)
 //----------------------------------------------------------------------
 void wifi_config()
 {
+  uart0_sendStr("wifi_config\r\n");
   // Wifi configuration
   char ssid[32] = "WLAN_19";
-  char password[64] = "12345678";
+  char password[64] = "xxxxxxxx";
   struct station_config stationConf;
  
   //Set station mode
@@ -248,24 +258,23 @@ void user_init(void)
 
     uart_init(BIT_RATE_115200, BIT_RATE_115200);
     //new code for the UDP server
-    uart0_sendStr("Link\r\n");
-     os_printf("\r\nGet this sucker going!\r\n");
+    uart0_sendStr("user_init\r\n");
 
-    //Set GPIO2 to output mode
+    //Set GPIO2 to output mode where the DHT22 sensor will be
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
     PIN_PULLUP_EN(PERIPHS_IO_MUX_GPIO2_U);
 
-    wifi_get_macaddr(0, hwaddr);
+    wifi_config();
+    //wifi_get_macaddr(0, hwaddr);
 
     os_timer_disarm(&some_timer);
 
     //Setup timer
     os_timer_setfn(&some_timer, (os_timer_func_t *)readDHT, NULL);
 
-    //Arm the timer
-    //&some_timer is the pointer
-    //1000 is the fire time in ms
-    //0 for once and 1 for repeating
-    os_timer_arm(&some_timer, 4000, 1);   
+    //Arm the timer &some_timer is the pointer 1000 is the fire time in ms
+    //0 for once and 1 for repeating. Now is set to 20 sec. 15 second is the
+    //minimum interval accepted by the thinkspeak.com
+    os_timer_arm(&some_timer, 20000, 1);   
     
 }

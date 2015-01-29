@@ -13,7 +13,7 @@
 //for sending data to uart like uart0_sendStr("Link\r\n");
 #include "driver/uart.h" 
 
-
+extern void ets_wdt_disable (void);
 
 #define MAXTIMINGS 10000
 #define BREAKTIME 20
@@ -70,8 +70,9 @@ static void ICACHE_FLASH_ATTR at_tcpclient_connect_cb(void *arg)
   
   espconn_regist_sentcb(pespconn, at_tcpclient_sent_cb);
   espconn_regist_disconcb(pespconn, at_tcpclient_discon_cb);
-  //~/bin/proxy curl "http://184.106.153.149/update?api_key=3QPPYHT1AEJO5VX&field1=33"  
-  os_sprintf(payload,"GET /update?api_key=3QPPYHT1AEJO5VX&field1=3300");   //T
+  //~/bin/proxy curl "http://184.106.153.149/update?api_key=3QPPYHT1AEJO5VXT&field1=33"  
+  //os_sprintf(payload, "%s\r\n", "GET /update?api_key=3QPPYHT1AEJO5VXT&field1=4000&field2=5000");   //T
+  os_sprintf(payload, "GET /update?api_key=3QPPYHT1AEJO5VXT&field1=%d&field2=%d\r\n", (int)(lastTemp*100), (int)(lastHum*100));   //T
   uart0_sendStr(payload);
   //os_sprintf(payload, MACSTR ",%d,%d\n", MAC2STR(hwaddr), (int)(lastTemp*100), (int)(lastHum*100));
   //os_printf(payload);
@@ -86,7 +87,10 @@ static void ICACHE_FLASH_ATTR at_tcpclient_connect_cb(void *arg)
 //----------------------------------------------------------------------
 static void ICACHE_FLASH_ATTR sendReading(float t, float h)
 {
-    uart0_sendStr("sendReading\r\n");
+    char send_temp[20];
+    os_sprintf(send_temp, "Temp:%d Hum:%d\r\n", (int)(t*100),(int)(h*100));
+    //uart0_sendStr("sendReading\r\n");
+    uart0_sendStr(send_temp);
     struct espconn *pCon = (struct espconn *)os_zalloc(sizeof(struct espconn));
     if (pCon == NULL)
     {
@@ -118,7 +122,19 @@ static void ICACHE_FLASH_ATTR sendReading(float t, float h)
     //espconn_regist_reconcb(pCon, at_tcpclient_recon_cb);
 
     //connect to the previous pCon created structure
-    espconn_connect(pCon);
+    int ret = 0;
+    ret = espconn_connect(pCon);
+    //os_delay_us(500000);
+    if(ret == 0) 
+      uart0_sendStr("espconn_connect OK!\r\n");
+    else
+    {
+      uart0_sendStr("espconn_connect FAILED!\r\n");  
+      char *fail;
+      os_sprintf(fail, "%d \r\n", ret);
+      uart0_sendStr(fail);
+    }
+
 
     os_printf("Temp =  %d *C, Hum = %d \%\n", (int)(t*100), (int)(h*100));
     
@@ -139,8 +155,8 @@ static void ICACHE_FLASH_ATTR readDHT(void *arg)
     
     //for now just send same random data. Not quite random but to test the
     //TCP client part
-    sendReading((float)1, (float)2);
-    return; //---> just for now
+    //sendReading((float)1, (float)2);
+    //return; //---> just for now
     
     int counter = 0;
     int laststate = 1;
@@ -238,7 +254,7 @@ void wifi_config()
   uart0_sendStr("wifi_config\r\n");
   // Wifi configuration
   char ssid[32] = "WLAN_19";
-  char password[64] = "xxxxxxxx";
+  char password[64] = "12345678";
   struct station_config stationConf;
  
   //Set station mode
@@ -259,7 +275,8 @@ void user_init(void)
     uart_init(BIT_RATE_115200, BIT_RATE_115200);
     //new code for the UDP server
     uart0_sendStr("user_init\r\n");
-
+    //disable watch dog for now
+    //ets_wdt_disable();
     //Set GPIO2 to output mode where the DHT22 sensor will be
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
     PIN_PULLUP_EN(PERIPHS_IO_MUX_GPIO2_U);
