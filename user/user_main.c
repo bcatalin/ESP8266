@@ -1,14 +1,3 @@
-/******************************************************************************
- * Copyright 2013-2014 Espressif Systems (Wuxi)
- *
- * FileName: user_main.c
- *
- * Description: entry file of user application
- *
- * Modification history:
- *     2015/1/23, v1.0 create this file.
-*******************************************************************************/
-
 #include "osapi.h"
 #include "user_interface.h"
 #include "user_interface.h"
@@ -25,8 +14,6 @@
 #include "driver/uart.h" 
 
 
-//#define SSID WLAN_19
-//#define PASSWORD 12345678
 
 #define MAXTIMINGS 10000
 #define BREAKTIME 20
