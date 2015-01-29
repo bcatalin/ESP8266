@@ -53,7 +53,8 @@ static void ICACHE_FLASH_ATTR at_tcpclient_discon_cb(void *arg) {
 }
 //----------------------------------------------------------------------
 // Function: at_tcpclient_connect_cb
-// Description: Call back for a connected client
+// Description: Call back for a connected client. Here data are sent to
+//              server.
 // Params: None
 // Return: None
 //----------------------------------------------------------------------
@@ -257,24 +258,23 @@ void user_init(void)
 
     uart_init(BIT_RATE_115200, BIT_RATE_115200);
     //new code for the UDP server
-    uart0_sendStr("Link\r\n");
-     os_printf("\r\nGet this sucker going!\r\n");
+    uart0_sendStr("user_init\r\n");
 
-    //Set GPIO2 to output mode
+    //Set GPIO2 to output mode where the DHT22 sensor will be
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
     PIN_PULLUP_EN(PERIPHS_IO_MUX_GPIO2_U);
 
-    wifi_get_macaddr(0, hwaddr);
+    wifi_config();
+    //wifi_get_macaddr(0, hwaddr);
 
     os_timer_disarm(&some_timer);
 
     //Setup timer
     os_timer_setfn(&some_timer, (os_timer_func_t *)readDHT, NULL);
 
-    //Arm the timer
-    //&some_timer is the pointer
-    //1000 is the fire time in ms
-    //0 for once and 1 for repeating
+    //Arm the timer &some_timer is the pointer 1000 is the fire time in ms
+    //0 for once and 1 for repeating. Now is set to 20 sec. 15 second is the
+    //minimum interval accepted by the thinkspeak.com
     os_timer_arm(&some_timer, 20000, 1);   
     
 }
