@@ -148,6 +148,12 @@ static void ICACHE_FLASH_ATTR sendReading(float t, float h)
 static void ICACHE_FLASH_ATTR readDHT(void *arg)
 {
     uart0_sendStr("readDTH\r\n");
+    
+    //for now just send same random data. Not quite random but to test the
+    //TCP client part
+    sendReading((float)1, (float)2);
+    return; //---> just for now
+    
     int counter = 0;
     int laststate = 1;
     int i = 0;
