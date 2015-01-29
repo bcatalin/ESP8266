@@ -250,7 +250,7 @@ void wifi_config()
   uart0_sendStr("wifi_config\r\n");
   // Wifi configuration
   char ssid[32] = "WLAN_19";
-  char password[64] = "12345678";
+  char password[64] = "xxxxxxxx";
   struct station_config stationConf;
  
   //Set station mode
