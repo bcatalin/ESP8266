@@ -82,8 +82,8 @@ static void ICACHE_FLASH_ATTR at_tcpclient_connect_cb(void *arg)
   
   espconn_regist_sentcb(pespconn, at_tcpclient_sent_cb);
   espconn_regist_disconcb(pespconn, at_tcpclient_discon_cb);
-  //~/bin/proxy curl "http://184.106.153.149/update?api_key=3QPPYHT1AEJO5VXT&field1=33"  
-  os_sprintf(payload,"GET /update?api_key=3QPPYHT1AEJO5VXT&field1=3300"); 
+  //~/bin/proxy curl "http://184.106.153.149/update?api_key=3QPPYHT1AEJO5VX&field1=33"  
+  os_sprintf(payload,"GET /update?api_key=3QPPYHT1AEJO5VX&field1=3300");   //T
   uart0_sendStr(payload);
   //os_sprintf(payload, MACSTR ",%d,%d\n", MAC2STR(hwaddr), (int)(lastTemp*100), (int)(lastHum*100));
   //os_printf(payload);
